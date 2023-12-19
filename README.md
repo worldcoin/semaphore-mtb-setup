@@ -24,27 +24,30 @@ This phase is circuit-specific, so if you have `n` circuits, then you need to ru
 
 ### snarkjs Powers of Tau deserialization
 
-Download the Powers of Tau () (`.ptau`) file you need corresponding to the amount of constraints in your circuit from the [`snarkjs` repository](https://github.com/iden3/snarkjs#7-prepare-phase-2).
+Download the power 27 `.ptau` file from the [`snarkjs` repository](https://github.com/iden3/snarkjs#7-prepare-phase-2) by running the following command:
 
-Remember that you need sufficiently high powers of tau ceremony to generate a proof for a circuit with a given amount of constraints ($2^{POW_OF_TAU} >= CIRCUIT_CONSTRAINTS$):
+```bash
+wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_27.ptau -O 27.ptau
+```
+
+For larger or smaller `.ptau` files, check out the `snarkjs` repository's [README](https://github.com/iden3/snarkjs/tree/master#7-prepare-phase-2) for more information.
+
+Remember that you need sufficiently high powers of tau ceremony to generate a proof for a circuit with a given amount of constraints:
 
 Import phase 1 by deserializing a .ptau file: `semaphore-mtb-setup p1i <ceremony.ptau> <lastPhase1Contribution.ph1>`.
 
 To get a sample r1cs file from `semaphore-mtb`, checkout the [`semaphore-mtb` repository](https://github.com/worldcoin/semaphore-mtb.git) and run the following command:
 
 ```bash
-cd ..
-git clone https://github.com/worldcoin/semaphore-mtb.git
-cd semaphore-mtb
+git clone https://github.com/worldcoin/semaphore-mtb.git && git checkout wip/mk/r1cs-export
 go build
-./gnark-mbu r1cs --mode <insertion/deletion> --tree-depth=<TREE_DEPTH> --batch-size=<BATCH_SIZE> --output=demo_smtb.r1cs
-cd ..
+./gnark-mbu r1cs --tree-depth=<TREE_DEPTH> --batch-size=<BATCH_SIZE> --output=demo_smtb.r1cs
 ```
 
 Move the file into the `semaphore-mtb-setup` directory:
 
 ```bash
-mv ./semaphore-mtb/demo_smtb.r1cs ./semaphore-mtb-setup/smtb.r1cs
+mv semaphore-mtb/demo_smtb.r1cs semaphore-mtb-setup/smtb.r1cs
 ```
 
 ### Initialization
@@ -70,7 +73,7 @@ This is a sequential process that will be repeated for each contributor.
 
 ## Keys Extraction
 
-At the end of the ceremony, the coordinator runs `semaphore-mtb-setup key <lastPhase2Contribution.ph2>` which will output **Groth16 bn254 curve** `pk` and `vk` files
+At the end of the ceremony, the coordinator runs `semaphore-mtb-setup keys <lastPhase2Contribution.ph2>` which will output **Groth16 bn254 curve** `pk` and `vk` files
 
 ## Phase 1 (Powers of Tau)
 

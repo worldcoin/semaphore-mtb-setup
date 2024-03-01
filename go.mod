@@ -3,8 +3,8 @@ module github.com/worldcoin/semaphore-mtb-setup
 go 1.19
 
 require (
-	github.com/consensys/gnark v0.8.0
-	github.com/consensys/gnark-crypto v0.9.1
+	github.com/consensys/gnark v0.8.1
+	github.com/consensys/gnark-crypto v0.9.2
 	github.com/urfave/cli/v2 v2.25.7
 	github.com/worldcoin/ptau-deserializer v0.1.3
 )
@@ -26,3 +26,5 @@ require (
 	golang.org/x/sys v0.9.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
+
+replace github.com/consensys/gnark => github.com/ewoolsey/gnark v0.8.3

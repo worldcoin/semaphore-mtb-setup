@@ -21,17 +21,15 @@ import (
 	"github.com/worldcoin/semaphore-mtb-setup/phase1"
 )
 
-func nextPowerofTwo(number int) int {
-	res := 2
-	for i := 1; i < 28; i++ { // max power is 28
-		if res >= number {
-			return res
-		} else {
-			res *= 2
-		}
+func NextPowerOfTwo(number int) int {
+	if number > 268435456 { // 2^28
+		panic("the power is beyond 28")
 	}
-	// Shouldn't happen
-	panic("the power is beyond 28")
+	res := 1
+	for res < number { // max power is 28
+		res = res << 1
+	}
+	return res
 }
 
 func processHeader(r1csPath string, phase1File, phase2File *os.File) (*phase1.Header, *Header, error) {
@@ -51,7 +49,7 @@ func processHeader(r1csPath string, phase1File, phase2File *os.File) (*phase1.He
 		return nil, nil, err
 	}
 	header2.Constraints = r1cs.GetNbConstraints()
-	header2.Domain = nextPowerofTwo(header2.Constraints)
+	header2.Domain = NextPowerOfTwo(header2.Constraints)
 
 	// Check if phase 1 power can support the current #Constraints
 	if err := header1.ReadFrom(phase1File); err != nil {
@@ -414,7 +412,7 @@ func accumulateG2(r1cs *cs_bn254.R1CS, res *bn254.G2Affine, t constraint.Term, v
 func scale(dec *bn254.Decoder, enc *bn254.Encoder, N int, delta *big.Int) error {
 	// Allocate batch with smallest of (N, batchSize)
 	const batchSize = 1048576 // 2^20
-	var initialSize = int(math.Min(float64(N), float64(batchSize)))
+	initialSize := int(math.Min(float64(N), float64(batchSize)))
 	buff := make([]bn254.G1Affine, initialSize)
 
 	remaining := N
@@ -486,7 +484,7 @@ func aggregate(inputDecoder, originDecoder *bn254.Decoder, size int) (*bn254.G1A
 	var inG, orG, tmp bn254.G1Affine
 	// Allocate batch with smallest of (N, batchSize)
 	const batchSize = 1048576 // 2^20
-	var initialSize = int(math.Min(float64(size), float64(batchSize)))
+	initialSize := int(math.Min(float64(size), float64(batchSize)))
 	buff := make([]bn254.G1Affine, initialSize)
 	r := make([]fr.Element, size)
 
@@ -592,5 +590,4 @@ func readPhase1(phase1File *os.File, power byte) (*bn254.G1Affine, *bn254.G1Affi
 	}
 
 	return &alpha, &beta1, &beta2, nil
-
 }

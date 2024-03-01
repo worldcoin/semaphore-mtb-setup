@@ -39,8 +39,8 @@ func (circuit *Circuit) Define(api frontend.API) error {
 
 	return nil
 }
-func TestSetup(t *testing.T) {
 
+func TestSetup(t *testing.T) {
 	// Compile the circuit
 	var myCircuit Circuit
 	ccs, err := frontend.Compile(bn254.ID.ScalarField(), r1cs.NewBuilder, &myCircuit)

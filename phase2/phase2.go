@@ -156,7 +156,7 @@ func Contribute(inputPath, outputPath string) error {
 	// Write the contribution
 	contribution.writeTo(writer)
 
-	fmt.Println("Contirbution has been successful!")
+	fmt.Println("Contribution has been successful!")
 	fmt.Println("Contribution Hash := ", hex.EncodeToString(contribution.Hash))
 
 	return nil

@@ -13,7 +13,6 @@ func main() {
 		Usage:     "Use this tool to generate parameters of Groth16 via MPC",
 		UsageText: "setup command [arguments...]",
 		Commands: []*cli.Command{
-
 			/* ----------------------------- Phase 1 Import ----------------------------- */
 			{
 				Name:        "p1i",
@@ -44,14 +43,14 @@ func main() {
 			},
 			/* ----------------------------- Keys Extraction ---------------------------- */
 			{
-				Name:        "key",
-				Usage:       "key <inputPath>",
+				Name:        "extract-keys",
+				Usage:       "extract-keys <phase1Path> <phase2Path> <phase2EvalsPath> <r1csPath>",
 				Description: "extract proving and verifying keys",
-				Action:      extract,
+				Action:      extractKeys,
 			},
 			{
 				Name:        "sol",
-				Usage:       "sol <session>",
+				Usage:       "sol <verifyingKey>",
 				Description: "export verifier smart contract from verifying key",
 				Action:      exportSol,
 			},

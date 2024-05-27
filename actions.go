@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"fmt"
+
 	// "strconv"
 	"os"
 
@@ -25,12 +27,18 @@ func p1i(cCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("Phase1 generated")
 
-	// Write phase1 to file
-	err = deserializer.WritePhase1(phase1, uint8(ptau.Header.Power), outputFilePath)
+	outputFile, err := os.Create(outputFilePath)
 	if err != nil {
 		return err
 	}
+
+	_, err = phase1.WriteTo(outputFile)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Phase1 written to", outputFilePath)
 
 	return nil
 }

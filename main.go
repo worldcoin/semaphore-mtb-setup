@@ -23,7 +23,7 @@ func main() {
 			/* --------------------------- Phase 2 Initialize --------------------------- */
 			{
 				Name:        "p2n",
-				Usage:       "p2n <phase1Path> <r1csPath> <phase2Path>",
+				Usage:       "p2n <phase1Path> <r1csPath> <phase2Path> <evalsPath>",
 				Description: "initialize phase 2 for the given circuit",
 				Action:      p2n,
 			},

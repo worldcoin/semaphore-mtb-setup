@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -45,13 +46,14 @@ func p1i(cCtx *cli.Context) error {
 
 func p2n(cCtx *cli.Context) error {
 	// sanity check
-	if cCtx.Args().Len() != 3 {
+	if cCtx.Args().Len() != 4 {
 		return errors.New("please provide the correct arguments")
 	}
 
 	phase1Path := cCtx.Args().Get(0)
 	r1csPath := cCtx.Args().Get(1)
 	phase2Path := cCtx.Args().Get(2)
+	evalsPath := cCtx.Args().Get(3)
 
 	phase1File, err := os.Open(phase1Path)
 	if err != nil {
@@ -64,16 +66,23 @@ func p2n(cCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	r1cs := &cs.R1CS{}
+	r1cs := cs.R1CS{}
 	r1cs.ReadFrom(r1csFile)
 
-	phase2, _ := mpcsetup.InitPhase2(r1cs, phase1)
+	phase2, evals := mpcsetup.InitPhase2(&r1cs, phase1)
 
 	phase2File, err := os.Create(phase2Path)
 	if err != nil {
 		return err
 	}
 	phase2.WriteTo(phase2File)
+
+	evalsFile, err := os.Create(evalsPath)
+	if err != nil {
+		return err
+	}
+
+	evals.WriteTo(evalsFile)
 
 	return nil
 }
@@ -161,6 +170,9 @@ func extractKeys(cCtx *cli.Context) error {
 	}
 	evals.ReadFrom(evalsFile)
 
+	e, _ := json.Marshal(evals)
+	fmt.Println(string(e))
+
 	r1csPath := cCtx.Args().Get(3)
 	r1cs := &cs.R1CS{}
 	r1csFile, err := os.Open(r1csPath)
@@ -170,6 +182,12 @@ func extractKeys(cCtx *cli.Context) error {
 	r1cs.ReadFrom(r1csFile)
 
 	pk, vk := mpcsetup.ExtractKeys(phase1, phase2, evals, r1cs.NbConstraints)
+
+	// k, _ := json.Marshal(vk.G1.K)
+	// fmt.Println(string(k))
+	//
+	// j, err := json.MarshalIndent(vk, "", " ")
+	// fmt.Println(string(j))
 
 	pkFile, err := os.Create("pk")
 	if err != nil {

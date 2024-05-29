@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	// "strconv"
 	"os"
 
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr/pedersen"
 	groth16 "github.com/consensys/gnark/backend/groth16/bn254"
 	"github.com/consensys/gnark/backend/groth16/bn254/mpcsetup"
 	cs "github.com/consensys/gnark/constraint/bn254"
@@ -69,7 +68,13 @@ func p2n(cCtx *cli.Context) error {
 	r1cs := cs.R1CS{}
 	r1cs.ReadFrom(r1csFile)
 
+	pedersenKeys := PedersenKeys{}
+
 	phase2, evals := mpcsetup.InitPhase2(&r1cs, phase1)
+	pedersenKeys.PK, pedersenKeys.VK, err = pedersen.Setup(evals.G1.VKK)
+	if err != nil {
+		return err
+	}
 
 	phase2File, err := os.Create(phase2Path)
 	if err != nil {
@@ -81,34 +86,55 @@ func p2n(cCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
 	evals.WriteTo(evalsFile)
+
+	pedersenKeysFile, err := os.Create("pedersenKeys")
+	if err != nil {
+		return err
+	}
+	pedersenKeys.WriteTo(pedersenKeysFile)
 
 	return nil
 }
 
 func p2c(cCtx *cli.Context) error {
 	// sanity check
-	if cCtx.Args().Len() != 2 {
+	if cCtx.Args().Len() != 4 {
 		return errors.New("please provide the correct arguments")
 	}
-	inputPath := cCtx.Args().Get(0)
-	outputPath := cCtx.Args().Get(1)
+	inputPh2Path := cCtx.Args().Get(0)
+	outputPh2Path := cCtx.Args().Get(1)
+	inputPedersenPath := cCtx.Args().Get(2)
+	outputPedersenPath := cCtx.Args().Get(3)
 
-	inputFile, err := os.Open(inputPath)
+	inputFile, err := os.Open(inputPh2Path)
 	if err != nil {
 		return err
 	}
 	phase2 := &mpcsetup.Phase2{}
 	phase2.ReadFrom(inputFile)
 
-	phase2.Contribute()
+	inputPedersenFile, err := os.Open(inputPedersenPath)
+	if err != nil {
+		return err
+	}
+	pedersen := PedersenKeys{}
+	pedersen.ReadFrom(inputPedersenFile)
 
-	outputFile, err := os.Create(outputPath)
+	phase2.Contribute()
+	pedersen.Contribute()
+
+	outputFile, err := os.Create(outputPh2Path)
 	if err != nil {
 		return err
 	}
 	phase2.WriteTo(outputFile)
+
+	outputPedersenFile, err := os.Create(outputPedersenPath)
+	if err != nil {
+		return err
+	}
+	pedersen.WriteTo(outputPedersenFile)
 
 	return nil
 }

@@ -65,8 +65,10 @@ func testSetup() error {
 
 	fmt.Println("Running phase2 contribution...")
 	phase2Final := phase2
-	pedersenKeysFinal := pedersenKeys
 	phase2Final.Contribute()
+
+	fmt.Println("Running pedersen contribution...")
+	pedersenKeysFinal := pedersenKeys
 	pedersenKeysFinal.Contribute()
 
 	fmt.Println("Running phase2 verification...")

@@ -24,16 +24,17 @@ func (pks *PedersenKeys) Contribute() error {
 	}
 	sigma.Add(sigma, big.NewInt(1))
 
-	var sigmaInv *big.Int
+	var sigmaInv big.Int
 	sigmaInv.ModInverse(sigma, fr.Modulus())
-	pks.VK.GRootSigmaNeg.ScalarMultiplication(&pks.VK.G, sigmaInv)
+
+	pks.VK.GRootSigmaNeg.ScalarMultiplication(&pks.VK.GRootSigmaNeg, &sigmaInv)
 
 	for _, pk := range pks.PK {
 		for _, basisExpSigma := range pk.BasisExpSigma {
 			basisExpSigma.ScalarMultiplication(&basisExpSigma, sigma)
 		}
 	}
-	pks.VK.GRootSigmaNeg.ScalarMultiplication(&pks.VK.GRootSigmaNeg, sigmaInv)
+	pks.VK.GRootSigmaNeg.ScalarMultiplication(&pks.VK.GRootSigmaNeg, &sigmaInv)
 
 	return nil
 }

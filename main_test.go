@@ -20,7 +20,7 @@ import (
 	deserializer "github.com/worldcoin/ptau-deserializer/deserialize"
 )
 
-func TestWriteTo(t *testing.T) {
+func TestEcdsaComplete(t *testing.T) {
 	err := testSetup()
 	if err != nil {
 		t.Error(err)
@@ -74,7 +74,19 @@ func testSetup() error {
 	fmt.Println("Running phase2 verification...")
 	mpcsetup.VerifyPhase2(&phase2, &phase2Final)
 
-	return nil
+	fmt.Println("Extracting keys...")
+	pk, vk := mpcsetup.ExtractKeys(&phase1, &phase2Final, &evals, r1cs.NbConstraints)
+	pk.CommitmentKeys = pedersenKeysFinal.PK
+	vk.CommitmentKey = pedersenKeysFinal.VK
+
+	fmt.Println("Exporting Solidity...")
+	solFile, err := os.Create("examples/ecdsa/ecdsa.sol")
+	if err != nil {
+		return err
+	}
+	err = vk.ExportSolidity(solFile)
+
+	return err
 }
 
 func ensureFileExists(filePath, url string) error {

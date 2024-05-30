@@ -209,12 +209,6 @@ func extractKeys(cCtx *cli.Context) error {
 
 	pk, vk := mpcsetup.ExtractKeys(phase1, phase2, evals, r1cs.NbConstraints)
 
-	// k, _ := json.Marshal(vk.G1.K)
-	// fmt.Println(string(k))
-	//
-	// j, err := json.MarshalIndent(vk, "", " ")
-	// fmt.Println(string(j))
-
 	pkFile, err := os.Create("pk")
 	if err != nil {
 		return err

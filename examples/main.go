@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// create a R1CS
-	cs, err := ecdsa.BuildR1CS()
+	cs, _, err := ecdsa.BuildR1CS()
 	if err != nil {
 		fmt.Println(err)
 		return

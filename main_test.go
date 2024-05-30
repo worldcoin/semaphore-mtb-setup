@@ -11,9 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	// "github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	// "github.com/consensys/gnark-crypto/ecc/bn254/fr/pedersen"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/pedersen"
+	groth16 "github.com/consensys/gnark/backend/groth16/bn254"
 	"github.com/consensys/gnark/backend/groth16/bn254/mpcsetup"
 	ecdsa "github.com/worldcoin/semaphore-mtb-setup/examples/ecdsa"
 
@@ -28,18 +27,19 @@ func TestEcdsaComplete(t *testing.T) {
 }
 
 func testSetup() error {
-	ptauFilePath := "examples/ecdsa/ppot_0080_13.ptau"
-	ptauDownloadLink := "https://pse-trusted-setup-ppot.s3.eu-central-1.amazonaws.com/pot28_0080/ppot_0080_13.ptau"
+	ptauFilePath := "examples/ecdsa/ppot_0080_17.ptau"
+	ptauDownloadLink := "https://pse-trusted-setup-ppot.s3.eu-central-1.amazonaws.com/pot28_0080/ppot_0080_17.ptau"
 	err := ensureFileExists(ptauFilePath, ptauDownloadLink)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("Building R1CS...")
-	r1cs, err := ecdsa.BuildR1CS()
+	r1cs, witness, err := ecdsa.BuildR1CS()
 	if err != nil {
 		return err
 	}
+	fmt.Println("Number of constraints: ", r1cs.NbConstraints)
 
 	fmt.Println("Reading ptau file...")
 	ptau, err := deserializer.ReadPtau(ptauFilePath)
@@ -85,6 +85,9 @@ func testSetup() error {
 		return err
 	}
 	err = vk.ExportSolidity(solFile)
+
+	fmt.Println("Generating Proof...")
+	groth16.Prove(r1cs, &pk, *witness)
 
 	return err
 }

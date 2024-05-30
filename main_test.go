@@ -1,9 +1,7 @@
 package main
 
 import (
-
-	// "crypto/rand"
-	// "math/big"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -13,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/pedersen"
-	gr "github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/groth16/bn254/mpcsetup"
 
 	deserializer "github.com/worldcoin/ptau-deserializer/deserialize"
@@ -83,7 +81,13 @@ func testSetup() error {
 	fmt.Println("Extracting keys...")
 	pk, vk := mpcsetup.ExtractKeys(&phase1, &phase2Final, &evals, r1cs.NbConstraints)
 	pk.CommitmentKeys = pedersenKeysFinal.PK
-	vk.CommitmentKey = pedersenKeysFinal.VK
+	// vk.CommitmentKey = pedersenKeysFinal.VK
+
+	j, err := json.Marshal(pk)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Public key: ", string(j))
 
 	fmt.Println("Exporting Solidity...")
 	solFile, err := os.Create("examples/ecdsa/ecdsa.sol")
@@ -96,7 +100,7 @@ func testSetup() error {
 	}
 
 	fmt.Println("Proving...")
-	proof, err := gr.Prove(r1cs, &pk, *witness)
+	proof, err := groth16.Prove(r1cs, &pk, *witness)
 	if err != nil {
 		return err
 	}
@@ -107,7 +111,7 @@ func testSetup() error {
 	}
 
 	fmt.Println("Verifying poof...")
-	err = gr.Verify(proof, &vk, pubWitness)
+	err = groth16.Verify(proof, &vk, pubWitness)
 
 	return err
 }

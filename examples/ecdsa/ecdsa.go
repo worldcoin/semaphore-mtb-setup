@@ -14,7 +14,6 @@ import (
 	"github.com/consensys/gnark/std/algebra/emulated/sw_emulated"
 	"github.com/consensys/gnark/std/math/emulated"
 	sig "github.com/consensys/gnark/std/signature/ecdsa"
-	"github.com/consensys/gnark/test"
 )
 
 type EcdsaCircuit[T, S emulated.FieldParams] struct {
@@ -52,42 +51,41 @@ func BuildR1CS() (*bn254.R1CS, *witness.Witness, error) {
 
 	hash := ecdsa.HashToInt(msg)
 
-	circuit := EcdsaCircuit[emulated.BN254Fp, emulated.BN254Fr]{
-		Sig: sig.Signature[emulated.BN254Fr]{
-			R: emulated.ValueOf[emulated.BN254Fr](r),
-			S: emulated.ValueOf[emulated.BN254Fr](s),
+	// circuit := EcdsaCircuit[emulated.BN254Fp, emulated.BN254Fr]{
+	// 	Sig: sig.Signature[emulated.BN254Fr]{
+	// 		R: emulated.ValueOf[emulated.BN254Fr](r),
+	// 		S: emulated.ValueOf[emulated.BN254Fr](s),
+	// 	},
+	// 	Msg: emulated.ValueOf[emulated.BN254Fr](hash),
+	// 	Pub: sig.PublicKey[emulated.BN254Fp, emulated.BN254Fr]{
+	// 		X: emulated.ValueOf[emulated.BN254Fp](privKey.PublicKey.A.X),
+	// 		Y: emulated.ValueOf[emulated.BN254Fp](privKey.PublicKey.A.Y),
+	// 	},
+	// }
+
+	circuit := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
+		Sig: sig.Signature[emulated.Secp256k1Fr]{
+			R: emulated.ValueOf[emulated.Secp256k1Fr](r),
+			S: emulated.ValueOf[emulated.Secp256k1Fr](s),
 		},
-		Msg: emulated.ValueOf[emulated.BN254Fr](hash),
-		Pub: sig.PublicKey[emulated.BN254Fp, emulated.BN254Fr]{
-			X: emulated.ValueOf[emulated.BN254Fp](privKey.PublicKey.A.X),
-			Y: emulated.ValueOf[emulated.BN254Fp](privKey.PublicKey.A.Y),
+		Msg: emulated.ValueOf[emulated.Secp256k1Fr](hash),
+		Pub: sig.PublicKey[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
+			X: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.X),
+			Y: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.Y),
 		},
 	}
 
-	// circuit := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
-	// 	Sig: sig.Signature[emulated.Secp256k1Fr]{
-	// 		R: emulated.ValueOf[emulated.Secp256k1Fr](r),
-	// 		S: emulated.ValueOf[emulated.Secp256k1Fr](s),
-	// 	},
-	// 	Msg: emulated.ValueOf[emulated.Secp256k1Fr](hash),
-	// 	Pub: sig.PublicKey[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
-	// 		X: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.X),
-	// 		Y: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.Y),
-	// 	},
-	// }
+	witnessCircuit := circuit
+
+	witness, err := frontend.NewWitness(&witnessCircuit, ecc.BN254.ScalarField())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	r1cs, err := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, &circuit)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	witness, err := frontend.NewWitness(&circuit, ecc.BN254.ScalarField())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	panic("not implemented")
-	err = test.IsSolved(&circuit, &circuit, ecc.BN254.ScalarField())
 
 	return r1cs.(*bn254.R1CS), &witness, err
 }

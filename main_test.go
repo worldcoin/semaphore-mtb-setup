@@ -6,17 +6,19 @@ import (
 	// "math/big"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/pedersen"
-	groth16 "github.com/consensys/gnark/backend/groth16/bn254"
+	gr "github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/groth16/bn254/mpcsetup"
-	ecdsa "github.com/worldcoin/semaphore-mtb-setup/examples/ecdsa"
 
 	deserializer "github.com/worldcoin/ptau-deserializer/deserialize"
+	// circuit "github.com/worldcoin/semaphore-mtb-setup/examples/ecdsa"
+	circuit "github.com/worldcoin/semaphore-mtb-setup/examples/eddsa"
 )
 
 func TestEcdsaComplete(t *testing.T) {
@@ -27,19 +29,23 @@ func TestEcdsaComplete(t *testing.T) {
 }
 
 func testSetup() error {
-	ptauFilePath := "examples/ecdsa/ppot_0080_17.ptau"
-	ptauDownloadLink := "https://pse-trusted-setup-ppot.s3.eu-central-1.amazonaws.com/pot28_0080/ppot_0080_17.ptau"
-	err := ensureFileExists(ptauFilePath, ptauDownloadLink)
-	if err != nil {
-		return err
-	}
-
 	fmt.Println("Building R1CS...")
-	r1cs, witness, err := ecdsa.BuildR1CS()
+	r1cs, witness, err := circuit.BuildR1CS()
 	if err != nil {
 		return err
 	}
 	fmt.Println("Number of constraints: ", r1cs.NbConstraints)
+	// get the log of the number of constraints
+	log2 := math.Log2(float64(r1cs.NbConstraints))
+	log2Ceil := int(math.Ceil(log2))
+	fmt.Println("Log2 of number of constraints: ", log2Ceil)
+
+	ptauFilePath := fmt.Sprintf("examples/ecdsa/ppot_0080_%d.ptau", log2Ceil)
+	ptauDownloadLink := fmt.Sprintf("https://pse-trusted-setup-ppot.s3.eu-central-1.amazonaws.com/pot28_0080/ppot_0080_%d.ptau", log2Ceil)
+	err = ensureFileExists(ptauFilePath, ptauDownloadLink)
+	if err != nil {
+		return err
+	}
 
 	fmt.Println("Reading ptau file...")
 	ptau, err := deserializer.ReadPtau(ptauFilePath)
@@ -85,9 +91,23 @@ func testSetup() error {
 		return err
 	}
 	err = vk.ExportSolidity(solFile)
+	if err != nil {
+		return err
+	}
 
-	fmt.Println("Generating Proof...")
-	groth16.Prove(r1cs, &pk, *witness)
+	fmt.Println("Proving...")
+	proof, err := gr.Prove(r1cs, &pk, *witness)
+	if err != nil {
+		return err
+	}
+
+	pubWitness, err := (*witness).Public()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Verifying poof...")
+	err = gr.Verify(proof, &vk, pubWitness)
 
 	return err
 }

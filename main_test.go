@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -81,13 +80,7 @@ func testSetup() error {
 	fmt.Println("Extracting keys...")
 	pk, vk := mpcsetup.ExtractKeys(&phase1, &phase2Final, &evals, r1cs.NbConstraints)
 	pk.CommitmentKeys = pedersenKeysFinal.PK
-	// vk.CommitmentKey = pedersenKeysFinal.VK
-
-	j, err := json.Marshal(pk)
-	if err != nil {
-		return err
-	}
-	fmt.Println("Public key: ", string(j))
+	vk.CommitmentKey = pedersenKeysFinal.VK
 
 	fmt.Println("Exporting Solidity...")
 	solFile, err := os.Create("examples/ecdsa/ecdsa.sol")

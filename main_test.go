@@ -14,8 +14,8 @@ import (
 	"github.com/consensys/gnark/backend/groth16/bn254/mpcsetup"
 
 	deserializer "github.com/worldcoin/ptau-deserializer/deserialize"
-	// circuit "github.com/worldcoin/semaphore-mtb-setup/examples/ecdsa"
-	circuit "github.com/worldcoin/semaphore-mtb-setup/examples/eddsa"
+	circuit "github.com/worldcoin/semaphore-mtb-setup/examples/ecdsa"
+	// circuit "github.com/worldcoin/semaphore-mtb-setup/examples/eddsa"
 )
 
 func TestEcdsaComplete(t *testing.T) {

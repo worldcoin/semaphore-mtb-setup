@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/pedersen"
 	groth16 "github.com/consensys/gnark/backend/groth16/bn254"
 	"github.com/consensys/gnark/backend/groth16/bn254/mpcsetup"
 	cs "github.com/consensys/gnark/constraint/bn254"
@@ -44,97 +43,95 @@ func p1i(cCtx *cli.Context) error {
 }
 
 func p2n(cCtx *cli.Context) error {
-	// sanity check
-	if cCtx.Args().Len() != 4 {
-		return errors.New("please provide the correct arguments")
-	}
-
-	phase1Path := cCtx.Args().Get(0)
-	r1csPath := cCtx.Args().Get(1)
-	phase2Path := cCtx.Args().Get(2)
-	evalsPath := cCtx.Args().Get(3)
-
-	phase1File, err := os.Open(phase1Path)
-	if err != nil {
-		return err
-	}
-	phase1 := &mpcsetup.Phase1{}
-	phase1.ReadFrom(phase1File)
-
-	r1csFile, err := os.Open(r1csPath)
-	if err != nil {
-		return err
-	}
-	r1cs := cs.R1CS{}
-	r1cs.ReadFrom(r1csFile)
-
-	pedersenKeys := PedersenKeys{}
-
-	phase2, evals := mpcsetup.InitPhase2(&r1cs, phase1)
-	pedersenKeys.PK, pedersenKeys.VK, err = pedersen.Setup(evals.G1.VKK)
-	if err != nil {
-		return err
-	}
-
-	phase2File, err := os.Create(phase2Path)
-	if err != nil {
-		return err
-	}
-	phase2.WriteTo(phase2File)
-
-	evalsFile, err := os.Create(evalsPath)
-	if err != nil {
-		return err
-	}
-	evals.WriteTo(evalsFile)
-
-	pedersenKeysFile, err := os.Create("pedersenKeys")
-	if err != nil {
-		return err
-	}
-	pedersenKeys.WriteTo(pedersenKeysFile)
+	// if cCtx.Args().Len() != 4 {
+	// 	return errors.New("please provide the correct arguments")
+	// }
+	//
+	// phase1Path := cCtx.Args().Get(0)
+	// r1csPath := cCtx.Args().Get(1)
+	// phase2Path := cCtx.Args().Get(2)
+	// evalsPath := cCtx.Args().Get(3)
+	//
+	// phase1File, err := os.Open(phase1Path)
+	// if err != nil {
+	// 	return err
+	// }
+	// phase1 := &mpcsetup.Phase1{}
+	// phase1.ReadFrom(phase1File)
+	//
+	// r1csFile, err := os.Open(r1csPath)
+	// if err != nil {
+	// 	return err
+	// }
+	// r1cs := cs.R1CS{}
+	// r1cs.ReadFrom(r1csFile)
+	//
+	// pedersenKeys := PedersenKeys{}
+	//
+	// phase2, evals := mpcsetup.InitPhase2(&r1cs, phase1)
+	// pedersenKeys.PK, pedersenKeys.VK, err = pedersen.Setup(evals.G1.VKK)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// phase2File, err := os.Create(phase2Path)
+	// if err != nil {
+	// 	return err
+	// }
+	// phase2.WriteTo(phase2File)
+	//
+	// evalsFile, err := os.Create(evalsPath)
+	// if err != nil {
+	// 	return err
+	// }
+	// evals.WriteTo(evalsFile)
+	//
+	// pedersenKeysFile, err := os.Create("pedersenKeys")
+	// if err != nil {
+	// 	return err
+	// }
+	// pedersenKeys.WriteTo(pedersenKeysFile)
 
 	return nil
 }
 
 func p2c(cCtx *cli.Context) error {
-	// sanity check
-	if cCtx.Args().Len() != 4 {
-		return errors.New("please provide the correct arguments")
-	}
-	inputPh2Path := cCtx.Args().Get(0)
-	outputPh2Path := cCtx.Args().Get(1)
-	inputPedersenPath := cCtx.Args().Get(2)
-	outputPedersenPath := cCtx.Args().Get(3)
-
-	inputFile, err := os.Open(inputPh2Path)
-	if err != nil {
-		return err
-	}
-	phase2 := &mpcsetup.Phase2{}
-	phase2.ReadFrom(inputFile)
-
-	inputPedersenFile, err := os.Open(inputPedersenPath)
-	if err != nil {
-		return err
-	}
-	pedersen := PedersenKeys{}
-	pedersen.ReadFrom(inputPedersenFile)
-
-	phase2.Contribute()
-	pedersen.Contribute()
-
-	outputFile, err := os.Create(outputPh2Path)
-	if err != nil {
-		return err
-	}
-	phase2.WriteTo(outputFile)
-
-	outputPedersenFile, err := os.Create(outputPedersenPath)
-	if err != nil {
-		return err
-	}
-	pedersen.WriteTo(outputPedersenFile)
+	// if cCtx.Args().Len() != 4 {
+	// 	return errors.New("please provide the correct arguments")
+	// }
+	// inputPh2Path := cCtx.Args().Get(0)
+	// outputPh2Path := cCtx.Args().Get(1)
+	// inputPedersenPath := cCtx.Args().Get(2)
+	// outputPedersenPath := cCtx.Args().Get(3)
+	//
+	// inputFile, err := os.Open(inputPh2Path)
+	// if err != nil {
+	// 	return err
+	// }
+	// phase2 := &mpcsetup.Phase2{}
+	// phase2.ReadFrom(inputFile)
+	//
+	// inputPedersenFile, err := os.Open(inputPedersenPath)
+	// if err != nil {
+	// 	return err
+	// }
+	// pedersen := PedersenKeys{}
+	// pedersen.ReadFrom(inputPedersenFile)
+	//
+	// phase2.Contribute()
+	// pedersen.Contribute()
+	//
+	// outputFile, err := os.Create(outputPh2Path)
+	// if err != nil {
+	// 	return err
+	// }
+	// phase2.WriteTo(outputFile)
+	//
+	// outputPedersenFile, err := os.Create(outputPedersenPath)
+	// if err != nil {
+	// 	return err
+	// }
+	// pedersen.WriteTo(outputPedersenFile)
 
 	return nil
 }

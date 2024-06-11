@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/secp256k1/ecdsa"
+	"github.com/consensys/gnark-crypto/ecc/bn254/ecdsa"
 	"github.com/consensys/gnark/backend/witness"
 	bn254 "github.com/consensys/gnark/constraint/bn254"
 	"github.com/consensys/gnark/frontend"
@@ -52,29 +52,16 @@ func BuildR1CS() (*bn254.R1CS, *witness.Witness, error) {
 
 	hash := ecdsa.HashToInt(msg)
 
-	// circuit := EcdsaCircuit[emulated.BN254Fp, emulated.BN254Fr]{}
-	// w := EcdsaCircuit[emulated.BN254Fp, emulated.BN254Fr]{
-	// 	Sig: sig.Signature[emulated.BN254Fr]{
-	// 		R: emulated.ValueOf[emulated.BN254Fr](r),
-	// 		S: emulated.ValueOf[emulated.BN254Fr](s),
-	// 	},
-	// 	Msg: emulated.ValueOf[emulated.BN254Fr](hash),
-	// 	Pub: sig.PublicKey[emulated.BN254Fp, emulated.BN254Fr]{
-	// 		X: emulated.ValueOf[emulated.BN254Fp](privKey.PublicKey.A.X),
-	// 		Y: emulated.ValueOf[emulated.BN254Fp](privKey.PublicKey.A.Y),
-	// 	},
-	// }
-
-	circuit := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{}
-	w := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
-		Sig: sig.Signature[emulated.Secp256k1Fr]{
-			R: emulated.ValueOf[emulated.Secp256k1Fr](r),
-			S: emulated.ValueOf[emulated.Secp256k1Fr](s),
+	circuit := EcdsaCircuit[emulated.BN254Fp, emulated.BN254Fr]{}
+	w := EcdsaCircuit[emulated.BN254Fp, emulated.BN254Fr]{
+		Sig: sig.Signature[emulated.BN254Fr]{
+			R: emulated.ValueOf[emulated.BN254Fr](r),
+			S: emulated.ValueOf[emulated.BN254Fr](s),
 		},
-		Msg: emulated.ValueOf[emulated.Secp256k1Fr](hash),
-		Pub: sig.PublicKey[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
-			X: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.X),
-			Y: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.Y),
+		Msg: emulated.ValueOf[emulated.BN254Fr](hash),
+		Pub: sig.PublicKey[emulated.BN254Fp, emulated.BN254Fr]{
+			X: emulated.ValueOf[emulated.BN254Fp](privKey.PublicKey.A.X),
+			Y: emulated.ValueOf[emulated.BN254Fp](privKey.PublicKey.A.Y),
 		},
 	}
 
@@ -84,7 +71,6 @@ func BuildR1CS() (*bn254.R1CS, *witness.Witness, error) {
 	}
 
 	witness, err := frontend.NewWitness(&w, ecc.BN254.ScalarField())
-	// witness, err := frontend.NewWitness(&w, ecc.SECP256K1.ScalarField())
 	if err != nil {
 		return nil, nil, err
 	}

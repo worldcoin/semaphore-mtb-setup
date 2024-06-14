@@ -5,15 +5,42 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/consensys/gnark-crypto/ecc/bn254"
+	curve "github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/pedersen"
-	// "github.com/consensys/gnark/constraint"
 )
 
 type PedersenKeys struct {
 	PK []pedersen.ProvingKey
 	VK pedersen.VerifyingKey
+}
+
+func InitPedersen(bases ...[]curve.G1Affine) (pks PedersenKeys, err error) {
+	_, _, _, g2 := curve.Generators()
+
+	pks.VK.G = g2
+
+	var modMinusOne big.Int
+	modMinusOne.Sub(fr.Modulus(), big.NewInt(1))
+
+	// set sigma to 1
+	sigma := big.NewInt(1)
+
+	// Todo: simplify
+	var sigmaInvNeg big.Int
+	sigmaInvNeg.ModInverse(sigma, fr.Modulus())
+	sigmaInvNeg.Sub(fr.Modulus(), &sigmaInvNeg)
+	pks.VK.GRootSigmaNeg.ScalarMultiplication(&pks.VK.G, &sigmaInvNeg)
+
+	pks.PK = make([]pedersen.ProvingKey, len(bases))
+	for i := range bases {
+		pks.PK[i].BasisExpSigma = make([]curve.G1Affine, len(bases[i]))
+		for j := range bases[i] {
+			pks.PK[i].BasisExpSigma[j].ScalarMultiplication(&bases[i][j], sigma)
+		}
+		pks.PK[i].Basis = bases[i]
+	}
+	return
 }
 
 func (pks *PedersenKeys) Contribute() error {
@@ -40,7 +67,7 @@ func (pks *PedersenKeys) Contribute() error {
 	return nil
 }
 
-func (pks *PedersenKeys) writeTo(enc *bn254.Encoder) (int64, error) {
+func (pks *PedersenKeys) writeTo(enc *curve.Encoder) (int64, error) {
 	for _, pk := range pks.PK {
 		if err := enc.Encode(pk.Basis); err != nil {
 			return enc.BytesWritten(), err
@@ -60,15 +87,15 @@ func (pks *PedersenKeys) writeTo(enc *bn254.Encoder) (int64, error) {
 }
 
 func (pks *PedersenKeys) WriteTo(w io.Writer) (int64, error) {
-	return pks.writeTo(bn254.NewEncoder(w))
+	return pks.writeTo(curve.NewEncoder(w))
 }
 
 func (pks *PedersenKeys) WriteRawTo(w io.Writer) (int64, error) {
-	return pks.writeTo(bn254.NewEncoder(w, bn254.RawEncoding()))
+	return pks.writeTo(curve.NewEncoder(w, curve.RawEncoding()))
 }
 
 func (pks *PedersenKeys) ReadFrom(r io.Reader) (int64, error) {
-	dec := bn254.NewDecoder(r)
+	dec := curve.NewDecoder(r)
 
 	if err := dec.Decode(&pks.PK); err != nil {
 		return dec.BytesRead(), err
@@ -86,15 +113,15 @@ func randomFrSizedBytes() ([]byte, error) {
 	return res, err
 }
 
-func randomOnG2() (bn254.G2Affine, error) { // TODO: Add to G2.go?
+func randomOnG2() (curve.G2Affine, error) { // TODO: Add to G2.go?
 	if gBytes, err := randomFrSizedBytes(); err != nil {
-		return bn254.G2Affine{}, err
+		return curve.G2Affine{}, err
 	} else {
-		return bn254.HashToG2(gBytes, []byte("random on g2"))
+		return curve.HashToG2(gBytes, []byte("random on g2"))
 	}
 }
 
-func Setup(bases ...[]bn254.G1Affine) (pk []pedersen.ProvingKey, vk pedersen.VerifyingKey, err error) {
+func Setup(bases ...[]curve.G1Affine) (pk []pedersen.ProvingKey, vk pedersen.VerifyingKey, err error) {
 	if vk.G, err = randomOnG2(); err != nil {
 		return
 	}
@@ -114,7 +141,7 @@ func Setup(bases ...[]bn254.G1Affine) (pk []pedersen.ProvingKey, vk pedersen.Ver
 
 	pk = make([]pedersen.ProvingKey, len(bases))
 	for i := range bases {
-		pk[i].BasisExpSigma = make([]bn254.G1Affine, len(bases[i]))
+		pk[i].BasisExpSigma = make([]curve.G1Affine, len(bases[i]))
 		for j := range bases[i] {
 			pk[i].BasisExpSigma[j].ScalarMultiplication(&bases[i][j], sigma)
 		}

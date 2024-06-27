@@ -1,14 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 
 	groth16 "github.com/consensys/gnark/backend/groth16/bn254"
 	"github.com/consensys/gnark/backend/groth16/bn254/mpcsetup"
-	cs "github.com/consensys/gnark/constraint/bn254"
 	"github.com/urfave/cli/v2"
 	deserializer "github.com/worldcoin/ptau-deserializer/deserialize"
 )
@@ -164,59 +162,59 @@ func p2v(cCtx *cli.Context) error {
 }
 
 func extractKeys(cCtx *cli.Context) error {
-	// sanity check
-	if cCtx.Args().Len() != 4 {
-		return errors.New("please provide the correct arguments")
-	}
-
-	phase1Path := cCtx.Args().Get(0)
-	phase1 := &mpcsetup.Phase1{}
-	phase1File, err := os.Open(phase1Path)
-	if err != nil {
-		return err
-	}
-	phase1.ReadFrom(phase1File)
-
-	phase2Path := cCtx.Args().Get(1)
-	phase2 := &mpcsetup.Phase2{}
-	phase2File, err := os.Open(phase2Path)
-	if err != nil {
-		return err
-	}
-	phase2.ReadFrom(phase2File)
-
-	evalsPath := cCtx.Args().Get(2)
-	evals := &mpcsetup.Phase2Evaluations{}
-	evalsFile, err := os.Open(evalsPath)
-	if err != nil {
-		return err
-	}
-	evals.ReadFrom(evalsFile)
-
-	e, _ := json.Marshal(evals)
-	fmt.Println(string(e))
-
-	r1csPath := cCtx.Args().Get(3)
-	r1cs := &cs.R1CS{}
-	r1csFile, err := os.Open(r1csPath)
-	if err != nil {
-		return err
-	}
-	r1cs.ReadFrom(r1csFile)
-
-	pk, vk := mpcsetup.ExtractKeys(phase1, phase2, evals, r1cs.NbConstraints)
-
-	pkFile, err := os.Create("pk")
-	if err != nil {
-		return err
-	}
-	pk.WriteTo(pkFile)
-
-	vkFile, err := os.Create("vk")
-	if err != nil {
-		return err
-	}
-	vk.WriteTo(vkFile)
+	// // sanity check
+	// if cCtx.Args().Len() != 4 {
+	// 	return errors.New("please provide the correct arguments")
+	// }
+	//
+	// phase1Path := cCtx.Args().Get(0)
+	// phase1 := &mpcsetup.Phase1{}
+	// phase1File, err := os.Open(phase1Path)
+	// if err != nil {
+	// 	return err
+	// }
+	// phase1.ReadFrom(phase1File)
+	//
+	// phase2Path := cCtx.Args().Get(1)
+	// phase2 := &mpcsetup.Phase2{}
+	// phase2File, err := os.Open(phase2Path)
+	// if err != nil {
+	// 	return err
+	// }
+	// phase2.ReadFrom(phase2File)
+	//
+	// evalsPath := cCtx.Args().Get(2)
+	// evals := &mpcsetup.Phase2Evaluations{}
+	// evalsFile, err := os.Open(evalsPath)
+	// if err != nil {
+	// 	return err
+	// }
+	// evals.ReadFrom(evalsFile)
+	//
+	// e, _ := json.Marshal(evals)
+	// fmt.Println(string(e))
+	//
+	// r1csPath := cCtx.Args().Get(3)
+	// r1cs := &cs.R1CS{}
+	// r1csFile, err := os.Open(r1csPath)
+	// if err != nil {
+	// 	return err
+	// }
+	// r1cs.ReadFrom(r1csFile)
+	//
+	// pk, vk := mpcsetup.ExtractKeys(phase1, phase2, evals, r1cs.NbConstraints)
+	//
+	// pkFile, err := os.Create("pk")
+	// if err != nil {
+	// 	return err
+	// }
+	// pk.WriteTo(pkFile)
+	//
+	// vkFile, err := os.Create("vk")
+	// if err != nil {
+	// 	return err
+	// }
+	// vk.WriteTo(vkFile)
 
 	return nil
 }

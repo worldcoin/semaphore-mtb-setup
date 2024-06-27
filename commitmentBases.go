@@ -2,10 +2,11 @@ package main
 
 import (
 	"errors"
-	"fmt"
+	"math/big"
 
 	curve "github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr/fft"
 	"github.com/consensys/gnark/backend/groth16/bn254/mpcsetup"
 	"github.com/consensys/gnark/constraint"
 	cs "github.com/consensys/gnark/constraint/bn254"
@@ -37,16 +38,16 @@ func InitCommitmentBases(r1cs *cs.R1CS, evals *mpcsetup.Phase2Evaluations) ([][]
 	nbPrivateWires := r1cs.GetNbSecretVariables() + r1cs.NbInternalVariables - nbPrivateCommittedWires - len(commitmentInfo)
 
 	// Setting group for fft
-	// domain := fft.NewDomain(uint64(r1cs.GetNbConstraints()))
+	domain := fft.NewDomain(uint64(r1cs.GetNbConstraints()))
 
 	// samples toxic waste
-	// toxicWaste, err := sampleToxicWaste()
-	// if err != nil {
-	// 	return err
-	// }
+	toxicWaste, err := sampleToxicWaste()
+	if err != nil {
+		return nil, err
+	}
 
 	// Setup coeffs to compute pk.G1.A, pk.G1.B, pk.G1.K
-	// A, B, C := setupABC(r1cs, domain, toxicWaste)
+	A, B, C := setupABC(r1cs, domain, toxicWaste)
 
 	// To fill in the Proving and Verifying keys, we need to perform a lot of ecc scalar multiplication (with generator)
 	// and convert the resulting points to affine
@@ -79,21 +80,15 @@ func InitCommitmentBases(r1cs *cs.R1CS, evals *mpcsetup.Phase2Evaluations) ([][]
 		ckK[i] = make([]fr.Element, len)
 	}
 
-	A := evals.G1.A
-	// fmt.Println("Len A", len(A))
-	// B := evals.G1.B
-	// VKK := evals.G1.VKK
+	var t0, t1 fr.Element
 
-	var t1 fr.Element
-	// var t0, t1 fr.Element
-
-	// computeK := func(i int, coeff *fr.Element) { // TODO: Inline again
-	// 	t1.Mul(&A[i], &toxicWaste.beta)
-	// 	t0.Mul(&B[i], &toxicWaste.alpha)
-	// 	t1.Add(&t1, &t0).
-	// 		Add(&t1, &C[i]).
-	// 		Mul(&t1, coeff)
-	// }
+	computeK := func(i int, coeff *fr.Element) { // TODO: Inline again
+		t1.Mul(&A[i], &toxicWaste.beta)
+		t0.Mul(&B[i], &toxicWaste.alpha)
+		t1.Add(&t1, &t0).
+			Add(&t1, &C[i]).
+			Mul(&t1, coeff)
+	}
 	vI := 0                                // number of public wires seen so far
 	cI := make([]int, len(commitmentInfo)) // number of private committed wires seen so far for each commitment
 	nbPrivateCommittedSeen := 0            // = ∑ᵢ cI[i]
@@ -117,24 +112,21 @@ func InitCommitmentBases(r1cs *cs.R1CS, evals *mpcsetup.Phase2Evaluations) ([][]
 		}
 
 		if isPublic || commitment != -1 || isCommitment {
-			// computeK(i, &toxicWaste.gammaInv)
+			computeK(i, &toxicWaste.gammaInv)
 
 			if isPublic || isCommitment {
 				vkK[vI] = t1
 				vI++
 			} else { // committed and private
-				fmt.Println("t1", t1)
 				ckK[commitment][cI[commitment]] = t1
 				cI[commitment]++
 				nbPrivateCommittedSeen++
 			}
 		} else {
-			// computeK(i, &toxicWaste.deltaInv)
+			computeK(i, &toxicWaste.deltaInv)
 			pkK[i-vI-nbPrivateCommittedSeen] = t1 // vI = nbPublicSeen + nbCommitmentsSeen
 		}
 	}
-
-	fmt.Println("ckK", ckK)
 
 	// // Z part of the proving key (scalars)
 	// Z := make([]fr.Element, domain.Cardinality)
@@ -230,6 +222,130 @@ func InitCommitmentBases(r1cs *cs.R1CS, evals *mpcsetup.Phase2Evaluations) ([][]
 	}
 
 	return commitmentBases, nil
+}
+
+func setupABC(r1cs *cs.R1CS, domain *fft.Domain, toxicWaste toxicWaste) (A []fr.Element, B []fr.Element, C []fr.Element) {
+	nbWires := r1cs.NbInternalVariables + r1cs.GetNbPublicVariables() + r1cs.GetNbSecretVariables()
+
+	A = make([]fr.Element, nbWires)
+	B = make([]fr.Element, nbWires)
+	C = make([]fr.Element, nbWires)
+
+	one := fr.One()
+
+	// first we compute [t-w^i] and its inverse
+	var w fr.Element
+	w.Set(&domain.Generator)
+	wi := fr.One()
+	t := make([]fr.Element, r1cs.GetNbConstraints()+1)
+	for i := 0; i < len(t); i++ {
+		t[i].Sub(&toxicWaste.t, &wi)
+		wi.Mul(&wi, &w) // TODO this is already pre computed in fft.Domain
+	}
+	tInv := fr.BatchInvert(t)
+
+	// evaluation of the i-th lagrange polynomial at t
+	var L fr.Element
+
+	// L = 1/n*(t^n-1)/(t-1), Li+1 = w*Li*(t-w^i)/(t-w^(i+1))
+
+	// Setting L0
+	L.Exp(toxicWaste.t, new(big.Int).SetUint64(uint64(domain.Cardinality))).
+		Sub(&L, &one)
+	L.Mul(&L, &tInv[0]).
+		Mul(&L, &domain.CardinalityInv)
+
+	accumulate := func(res *fr.Element, t constraint.Term, value *fr.Element) {
+		cID := t.CoeffID()
+		switch cID {
+		case constraint.CoeffIdZero:
+			return
+		case constraint.CoeffIdOne:
+			res.Add(res, value)
+		case constraint.CoeffIdMinusOne:
+			res.Sub(res, value)
+		case constraint.CoeffIdTwo:
+			var buffer fr.Element
+			buffer.Double(value)
+			res.Add(res, &buffer)
+		default:
+			var buffer fr.Element
+			buffer.Mul(&r1cs.Coefficients[cID], value)
+			res.Add(res, &buffer)
+		}
+	}
+
+	// each constraint is in the form
+	// L * R == O
+	// L, R and O being linear expressions
+	// for each term appearing in the linear expression,
+	// we compute term.Coefficient * L, and cumulate it in
+	// A, B or C at the index of the variable
+
+	j := 0
+	it := r1cs.GetR1CIterator()
+	for c := it.Next(); c != nil; c = it.Next() {
+		for _, t := range c.L {
+			accumulate(&A[t.WireID()], t, &L)
+		}
+		for _, t := range c.R {
+			accumulate(&B[t.WireID()], t, &L)
+		}
+		for _, t := range c.O {
+			accumulate(&C[t.WireID()], t, &L)
+		}
+
+		// Li+1 = w*Li*(t-w^i)/(t-w^(i+1))
+		L.Mul(&L, &w)
+		L.Mul(&L, &t[j])
+		L.Mul(&L, &tInv[j+1])
+
+		j++
+	}
+
+	return
+}
+
+// toxicWaste toxic waste
+type toxicWaste struct {
+	// Montgomery form of params
+	t, alpha, beta, gamma, delta fr.Element
+	gammaInv, deltaInv           fr.Element
+}
+
+func sampleToxicWaste() (toxicWaste, error) {
+	res := toxicWaste{}
+
+	for res.t.IsZero() {
+		if _, err := res.t.SetRandom(); err != nil {
+			return res, err
+		}
+	}
+	for res.alpha.IsZero() {
+		if _, err := res.alpha.SetRandom(); err != nil {
+			return res, err
+		}
+	}
+	for res.beta.IsZero() {
+		if _, err := res.beta.SetRandom(); err != nil {
+			return res, err
+		}
+	}
+	for res.gamma.IsZero() {
+		if _, err := res.gamma.SetRandom(); err != nil {
+			return res, err
+		}
+	}
+	for res.delta.IsZero() {
+		if _, err := res.delta.SetRandom(); err != nil {
+			return res, err
+		}
+	}
+
+	res.gammaInv.Inverse(&res.gamma)
+	res.deltaInv.Inverse(&res.delta)
+
+	return res, nil
 }
 
 func ConcatAll(slices ...[]int) []int { // copyright note: written by GitHub Copilot

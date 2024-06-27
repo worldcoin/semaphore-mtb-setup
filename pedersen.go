@@ -44,25 +44,21 @@ func InitPedersen(bases ...[]curve.G1Affine) (pks PedersenKeys, err error) {
 }
 
 func (pks *PedersenKeys) Contribute() error {
-	var modMinusOne big.Int
-	modMinusOne.Sub(fr.Modulus(), big.NewInt(1))
-	sigma, err := rand.Int(rand.Reader, &modMinusOne)
-	if err != nil {
-		return err
-	}
-	sigma.Add(sigma, big.NewInt(1))
+	var sigma, sigmaInv fr.Element
+	var sigmaBI, sigmaInvBI big.Int
+	sigma.SetRandom()
+	sigmaInv.Inverse(&sigma)
 
-	var sigmaInv big.Int
-	sigmaInv.ModInverse(sigma, fr.Modulus())
+	sigma.BigInt(&sigmaBI)
+	sigmaInv.BigInt(&sigmaInvBI)
 
-	pks.VK.GRootSigmaNeg.ScalarMultiplication(&pks.VK.GRootSigmaNeg, &sigmaInv)
+	pks.VK.GRootSigmaNeg.ScalarMultiplication(&pks.VK.GRootSigmaNeg, &sigmaInvBI)
 
 	for _, pk := range pks.PK {
-		for _, basisExpSigma := range pk.BasisExpSigma {
-			basisExpSigma.ScalarMultiplication(&basisExpSigma, sigma)
+		for i := range pk.BasisExpSigma {
+			pk.BasisExpSigma[i].ScalarMultiplication(&pk.BasisExpSigma[i], &sigmaBI)
 		}
 	}
-	pks.VK.GRootSigmaNeg.ScalarMultiplication(&pks.VK.GRootSigmaNeg, &sigmaInv)
 
 	return nil
 }

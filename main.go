@@ -30,7 +30,7 @@ func main() {
 			/* --------------------------- Phase 2 Contribute --------------------------- */
 			{
 				Name:        "p2c",
-				Usage:       "p2c <inputPh2> <outputPh2> <inputPedersen> <outputPedersen>",
+				Usage:       "p2c <inputPh2> <outputPh2>",
 				Description: "contribute phase 2 randomness for Groth16",
 				Action:      p2c,
 			},

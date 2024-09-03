@@ -84,9 +84,6 @@ func p2n(cCtx *cli.Context) error {
 }
 
 func p2c(cCtx *cli.Context) error {
-	if cCtx.Args().Len() != 4 {
-		return errors.New("please provide the correct arguments")
-	}
 	inputPh2Path := cCtx.Args().Get(0)
 	outputPh2Path := cCtx.Args().Get(1)
 
@@ -109,7 +106,6 @@ func p2c(cCtx *cli.Context) error {
 }
 
 func p2v(cCtx *cli.Context) error {
-	// sanity check
 	if cCtx.Args().Len() != 2 {
 		return errors.New("please provide the correct arguments")
 	}

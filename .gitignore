@@ -2,6 +2,7 @@
 *.ph1
 *.ph2
 *.r1cs
+*.sol
 evals
 srs.lag
 pk

@@ -88,16 +88,18 @@ func TestEcdsaMpc(t *testing.T) {
 	// 	t.Fatal(err)
 	// }
 	//
-	// fmt.Println("Running phase2 contribution...")
-	// phase2Final := phase2
-	// phase2Final.Contribute()
+	fmt.Println("Running phase2 contribution...")
+	phase2Final := phase2
+	phase2Final.Contribute()
+	phase2Final.Contribute()
+	phase2Final.Contribute()
 	//
 	// fmt.Println("Running pedersen contribution...")
 	// pedersenKeysFinal := pedersenKeys
 	// pedersenKeysFinal.Contribute()
 	//
-	// fmt.Println("Running phase2 verification...")
-	// mpcsetup.VerifyPhase2(&phase2, &phase2Final)
+	fmt.Println("Running phase2 verification...")
+	mpcsetup.VerifyPhase2(&phase2, &phase2Final)
 
 	// fmt.Println("Inserting G1 point into evals...")
 	// evals.G1.VKK = append(evals.G1.VKK, pedersenKeysFinal.VK.GRootSigmaNeg...)
@@ -111,7 +113,7 @@ func TestEcdsaMpc(t *testing.T) {
 	// vk.CommitmentKey = pedersenKeys.VK
 
 	fmt.Println("Extracting keys...")
-	pk, vk := mpcsetup.ExtractKeys(r1cs, &phase1, &phase2, &evals)
+	pk, vk := mpcsetup.ExtractKeys(r1cs, &phase1, &phase2Final, &evals)
 
 	fmt.Println("Running local setup...")
 	lpk, lvk, err := groth16.Setup(r1cs)

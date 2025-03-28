@@ -31,13 +31,13 @@ cd semaphore-mtb-setup && go build -v
 
 # Download Powers of Tau files for each respective circuit
 #    !!! Bucket has been deleted
-# wget # https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_20.ptau 
+wget https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_20.ptau 
 mv powersOfTau28_hez_final_20.ptau 20.ptau
 
-# wget # https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_23.ptau 
+wget https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau 
 mv powersOfTau28_hez_final_23.ptau 23.ptau
 
-# wget # https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_26.ptau 
+wget https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_26.ptau 
 mv powersOfTau28_hez_final_26.ptau 26.ptau
 
 # Convert .ptau format into .ph1

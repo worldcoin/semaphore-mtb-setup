@@ -111,7 +111,10 @@ func TestSetup(t *testing.T) {
 func TestProveAndVerify(t *testing.T) {
 	// Compile the circuit
 	var myCircuit Circuit
-	ccs, _ := frontend.Compile(bn254.ID.ScalarField(), r1cs.NewBuilder, &myCircuit)
+	ccs, err := frontend.Compile(bn254.ID.ScalarField(), r1cs.NewBuilder, &myCircuit)
+	if err != nil {
+		t.Error(err)
+	}
 
 	// Read PK and VK
 	pkk := groth16.NewProvingKey(ecc.BN254)

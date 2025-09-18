@@ -26,7 +26,7 @@ type VerifyingKey struct {
 		Beta, Delta, Gamma bn254.G2Affine
 	}
 
-	CommitmentKey  pedersen.Key
+	CommitmentKey  pedersen.VerifyingKey
 	CommitmentInfo constraint.Commitment // since the verifier doesn't input a constraint system, this needs to be provided here
 }
 
@@ -61,7 +61,7 @@ func (vk *VerifyingKey) writeTo(w io.Writer) (int64, error) {
 	return enc.BytesWritten(), nil
 }
 
-func extractPK(phase2Path string) error {
+func extractPK(phase2Path string, commitmentKeys []pedersen.ProvingKey) error {
 	// Phase 2 file
 	phase2File, err := os.Open(phase2Path)
 	if err != nil {
@@ -225,22 +225,35 @@ func extractPK(phase2Path string) error {
 		return err
 	}
 
+	// 16. Write length of commitment keys
+	if err := encPk.Encode(uint32(len(commitmentKeys))); err != nil {
+		return err
+	}
+
+	// 17. Write commitment keys
+	for _, ck := range commitmentKeys {
+		_, err := ck.WriteTo(pkWriter)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func extractVK(phase2Path string) error {
+func extractVK(phase2Path string) ([]pedersen.ProvingKey, error) {
 	vk := VerifyingKey{}
 	// Phase 2 file
 	phase2File, err := os.Open(phase2Path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer phase2File.Close()
 
 	// Evaluations
 	evalsFile, err := os.Open("evals")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer evalsFile.Close()
 
@@ -250,7 +263,7 @@ func extractVK(phase2Path string) error {
 
 	var header phase2.Header
 	if err := header.Read(ph2Reader); err != nil {
-		return err
+		return nil, err
 	}
 
 	decPh2 := bn254.NewDecoder(ph2Reader)
@@ -258,7 +271,7 @@ func extractVK(phase2Path string) error {
 
 	vkFile, err := os.Create("vk")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer vkFile.Close()
 	vkWriter := bufio.NewWriter(vkFile)
@@ -266,17 +279,17 @@ func extractVK(phase2Path string) error {
 
 	// 1. Read [α]₁
 	if err := decEvals.Decode(&vk.G1.Alpha); err != nil {
-		return err
+		return nil, err
 	}
 
 	// 2. Read [β]₁
 	if err := decEvals.Decode(&vk.G1.Beta); err != nil {
-		return err
+		return nil, err
 	}
 
 	// 3. Read [β]₂
 	if err := decEvals.Decode(&vk.G2.Beta); err != nil {
-		return err
+		return nil, err
 	}
 
 	// 4. Set [γ]₂
@@ -285,46 +298,48 @@ func extractVK(phase2Path string) error {
 
 	// 5. Read [δ]₁
 	if err := decPh2.Decode(&vk.G1.Delta); err != nil {
-		return err
+		return nil, err
 	}
 
 	// 6. Read [δ]₂
 	if err := decPh2.Decode(&vk.G2.Delta); err != nil {
-		return err
+		return nil, err
 	}
 
 	// 7. Read VKK
 	pos := int64(128*(header.Wires+1) + 12)
 	if _, err := evalsFile.Seek(pos, io.SeekStart); err != nil {
-		return err
+		return nil, err
 	}
 	evalsReader.Reset(evalsFile)
 	if err := decEvals.Decode(&vk.G1.K); err != nil {
-		return err
+		return nil, err
 	}
 
 	// 8. Setup commitment key
 	var ckk []bn254.G1Affine
 	if err := decEvals.Decode(&ckk); err != nil {
-		return err
+		return nil, err
 	}
-	vk.CommitmentKey, err = pedersen.Setup(ckk)
+	var pk []pedersen.ProvingKey
+	pk, vk.CommitmentKey, err = pedersen.Setup(ckk)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if _, err := vk.writeTo(vkWriter); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return pk, nil
 }
 
 func ExtractKeys(phase2Path string) error {
-	fmt.Println("Extracting proving key")
-	if err := extractPK(phase2Path); err != nil {
+	fmt.Println("Extracting verifying key")
+	pk, err := extractVK(phase2Path)
+	if err != nil {
 		return err
 	}
-	fmt.Println("Extracting verifying key")
-	if err := extractVK(phase2Path); err != nil {
+	fmt.Println("Extracting proving key")
+	if err := extractPK(phase2Path, pk); err != nil {
 		return err
 	}
 	fmt.Println("Keys have been extracted successfully")

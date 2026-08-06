@@ -62,12 +62,23 @@ func processHeader(r1csPath string, phase1File, phase2File *os.File) (*phase1.He
 		return nil, nil, fmt.Errorf("phase 1 parameters can support up to %d, but the circuit #Constraints are %d", N, header2.Constraints)
 	}
 	// Initialize Domain, #Wires, #Witness, #Public, #PrivateCommitted
+
+	// Calculate number of private commitments
+	commitments, ok := r1cs.CommitmentInfo.(constraint.Groth16Commitments)
+	if !ok {
+		return nil, nil, errors.New("commitment info is not of type Groth16Commitments")
+	}
+	privateCommittedNum := 0
+	for _, commitment := range commitments {
+		privateCommittedNum += len(commitment.PrivateCommitted)
+	}
+
 	header2.Wires = r1cs.NbInternalVariables + r1cs.GetNbPublicVariables() + r1cs.GetNbSecretVariables()
-	header2.PrivateCommitted = r1cs.CommitmentInfo.NbPrivateCommitted
+	header2.PrivateCommitted = privateCommittedNum
 	header2.Public = r1cs.GetNbPublicVariables()
 	header2.Witness = r1cs.GetNbSecretVariables() + r1cs.NbInternalVariables - header2.PrivateCommitted
 
-	if r1cs.CommitmentInfo.Is() { // the commitment itself is defined by a hint so the prover considers it private
+	if Is(commitments) { // the commitment itself is defined by a hint so the prover considers it private
 		header2.Public++  // but the verifier will need to inject the value itself so on the groth16
 		header2.Witness-- // level it must be considered public
 	}
@@ -176,7 +187,7 @@ func processEvaluations(header1 *phase1.Header, header2 *Header, r1csPath string
 
 	// Accumlate {[A]₁}
 	buff := make([]bn254.G1Affine, header2.Wires)
-	for i, c := range r1cs.Constraints {
+	for i, c := range r1cs.GetR1Cs() {
 		for _, t := range c.L {
 			accumulateG1(&r1cs, &buff[t.WireID()], t, &tauG1[i])
 		}
@@ -189,7 +200,7 @@ func processEvaluations(header1 *phase1.Header, header2 *Header, r1csPath string
 	// Reset buff
 	buff = make([]bn254.G1Affine, header2.Wires)
 	// Accumlate {[B]₁}
-	for i, c := range r1cs.Constraints {
+	for i, c := range r1cs.GetR1Cs() {
 		for _, t := range c.R {
 			accumulateG1(&r1cs, &buff[t.WireID()], t, &tauG1[i])
 		}
@@ -213,7 +224,7 @@ func processEvaluations(header1 *phase1.Header, header2 *Header, r1csPath string
 		return err
 	}
 	// Accumlate {[B]₂}
-	for i, c := range r1cs.Constraints {
+	for i, c := range r1cs.GetR1Cs() {
 		for _, t := range c.R {
 			accumulateG2(&r1cs, &buff2[t.WireID()], t, &tauG2[i])
 		}
@@ -307,7 +318,7 @@ func processPVCKK(header1 *phase1.Header, header2 *Header, r1csPath string, phas
 		return err
 	}
 
-	for i, c := range r1cs.Constraints {
+	for i, c := range r1cs.GetR1Cs() {
 		// Output(Tau)
 		for _, t := range c.O {
 			accumulateG1(&r1cs, &L[t.WireID()], t, &buffSRS[i])
@@ -318,7 +329,7 @@ func processPVCKK(header1 *phase1.Header, header2 *Header, r1csPath string, phas
 	if err := dec.Decode(&buffSRS); err != nil {
 		return err
 	}
-	for i, c := range r1cs.Constraints {
+	for i, c := range r1cs.GetR1Cs() {
 		// Right(AlphaTauG1)
 		for _, t := range c.R {
 			accumulateG1(&r1cs, &L[t.WireID()], t, &buffSRS[i])
@@ -329,14 +340,19 @@ func processPVCKK(header1 *phase1.Header, header2 *Header, r1csPath string, phas
 	if err := dec.Decode(&buffSRS); err != nil {
 		return err
 	}
-	for i, c := range r1cs.Constraints {
+	for i, c := range r1cs.GetR1Cs() {
 		// Left(BetaTauG1)
 		for _, t := range c.L {
 			accumulateG1(&r1cs, &L[t.WireID()], t, &buffSRS[i])
 		}
 	}
 
-	pkk, vkk, ckk := filterL(L, header2, &r1cs.CommitmentInfo)
+	commitments, ok := r1cs.CommitmentInfo.(constraint.Groth16Commitments)
+	if !ok {
+		return errors.New("commitment info is not of type Groth16Commitments")
+	}
+
+	pkk, vkk, ckk := filterL(L, header2, commitments)
 	// Write PKK
 	for i := 0; i < len(pkk); i++ {
 		if err := enc.Encode(&pkk[i]); err != nil {
@@ -534,23 +550,42 @@ func aggregate(inputDecoder, originDecoder *bn254.Decoder, size int) (*bn254.G1A
 	return &inG, &orG, nil
 }
 
-func filterL(L []bn254.G1Affine, header2 *Header, cmtInfo *constraint.Commitment) ([]bn254.G1Affine, []bn254.G1Affine, []bn254.G1Affine) {
+func filterL(L []bn254.G1Affine, header2 *Header, cmtInfo constraint.Groth16Commitments) ([]bn254.G1Affine, []bn254.G1Affine, []bn254.G1Affine) {
 	pkk := make([]bn254.G1Affine, header2.Witness)
 	vkk := make([]bn254.G1Affine, header2.Public)
 	ckk := make([]bn254.G1Affine, header2.PrivateCommitted)
 	vI, cI := 0, 0
+
+	commitmentIndexes := make(map[int]struct{})
+	for _, c := range cmtInfo {
+		commitmentIndexes[c.CommitmentIndex] = struct{}{}
+	}
+
+	numPrivateCommitted := 0
+	for _, commitment := range cmtInfo {
+		numPrivateCommitted += len(commitment.PrivateCommitted)
+	}
+
 	for i := range L {
-		isCommittedPrivate := cI < cmtInfo.NbPrivateCommitted && i == cmtInfo.PrivateCommitted()[i]
-		isCommitment := cmtInfo.Is() && i == cmtInfo.CommitmentIndex
+		_, isCommitment := commitmentIndexes[i]
+		isCommittedPrivate := cI < numPrivateCommitted
 		isPublic := i < header2.Public
+
 		if isCommittedPrivate {
-			ckk[cI].Set(&L[i])
-			cI++
+			if cI < len(ckk) {
+				ckk[cI].Set(&L[i])
+				cI++
+			}
 		} else if isCommitment || isPublic {
-			vkk[vI].Set(&L[i])
-			vI++
+			if vI < len(vkk) {
+				vkk[vI].Set(&L[i])
+				vI++
+			}
 		} else {
-			pkk[i-cI-vI].Set(&L[i])
+			pIndex := i - cI - vI
+			if pIndex >= 0 && pIndex < len(pkk) {
+				pkk[pIndex].Set(&L[i])
+			}
 		}
 	}
 
@@ -593,4 +628,15 @@ func readPhase1(phase1File *os.File, power byte) (*bn254.G1Affine, *bn254.G1Affi
 
 	return &alpha, &beta1, &beta2, nil
 
+}
+
+func Is(commitments constraint.Groth16Commitments) bool {
+	var isCommitted bool
+	for _, commitment := range commitments {
+		if len(commitment.PublicAndCommitmentCommitted) > 0 || len(commitment.PrivateCommitted) > 0 {
+			isCommitted = true
+			break
+		}
+	}
+	return isCommitted
 }
